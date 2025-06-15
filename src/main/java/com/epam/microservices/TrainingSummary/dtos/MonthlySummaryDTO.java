@@ -1,6 +1,5 @@
 package com.epam.microservices.TrainingSummary.dtos;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 

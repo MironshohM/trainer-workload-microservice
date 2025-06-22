@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 
+import java.util.Optional;
+
 @Service
 @Slf4j
 public class TrainingWorkloadServiceImpl implements TrainingWorkloadService {
@@ -23,64 +25,83 @@ public class TrainingWorkloadServiceImpl implements TrainingWorkloadService {
 
     @Override
     public void processTrainingSessionEvent(TrainingSessionEventDTO dto) {
-        String transactionId = MDC.get("transactionId"); // get from context if available
+        String transactionId = MDC.get("transactionId");
         log.info("TransactionID: {} - Processing training session event: {}", transactionId, dto);
 
-        TrainerWorkload trainer = trainerRepo.findById(dto.getUsername())
-                .orElseGet(() -> {
-                    log.info("TransactionID: {} - Creating new TrainerWorkload for {}", transactionId, dto.getUsername());
-                    return new TrainerWorkload(
-                            dto.getUsername(),
-                            dto.getFirstName(),
-                            dto.getLastName(),
-                            dto.isActive()
-                    );
-                });
-
-        trainer.setFirstName(dto.getFirstName());
-        trainer.setLastName(dto.getLastName());
-        trainer.setActive(dto.isActive());
-
+        String username = dto.getUsername();
         int year = dto.getTrainingDate().getYear();
         int month = dto.getTrainingDate().getMonthValue();
+        int duration = dto.getTrainingDuration();
+        String action = dto.getActionType();
 
-        YearlyWorkload yearly = trainer.getYearlyWorkloads().stream()
-                .filter(y -> y.getYear() == year)
-                .findFirst()
-                .orElseGet(() -> {
-                    log.info("TransactionID: {} - Creating new YearlyWorkload for year {}", transactionId, year);
-                    YearlyWorkload y = new YearlyWorkload();
-                    y.setYear(year);
-                    trainer.getYearlyWorkloads().add(y);
-                    return y;
-                });
+        // Check if trainer exists
+        Optional<TrainerWorkload> optionalTrainer = trainerRepo.findById(username);
+        TrainerWorkload trainer;
 
-        MonthlyWorkload monthly = yearly.getMonthlyWorkloads().stream()
-                .filter(m -> m.getMonth() == month)
-                .findFirst()
-                .orElseGet(() -> {
-                    log.info("TransactionID: {} - Creating new MonthlyWorkload for month {}", transactionId, month);
-                    MonthlyWorkload m = new MonthlyWorkload();
-                    m.setMonth(month);
-                    yearly.getMonthlyWorkloads().add(m);
-                    return m;
-                });
+        if (optionalTrainer.isEmpty()) {
+            // New trainer case
+            log.info("TransactionID: {} - Creating new TrainerWorkload for {}", transactionId, username);
 
-        if ("ADD".equalsIgnoreCase(dto.getActionType())) {
-            log.info("TransactionID: {} - Adding {} minutes to {} for {}/{}", transactionId,
-                    dto.getTrainingDuration(), dto.getUsername(), year, month);
-            monthly.setTotalTrainingDuration(monthly.getTotalTrainingDuration() + dto.getTrainingDuration());
-        } else if ("DELETE".equalsIgnoreCase(dto.getActionType())) {
-            log.info("TransactionID: {} - Removing {} minutes from {} for {}/{}", transactionId,
-                    dto.getTrainingDuration(), dto.getUsername(), year, month);
-            monthly.setTotalTrainingDuration(
-                    Math.max(0, monthly.getTotalTrainingDuration() - dto.getTrainingDuration())
+            MonthlyWorkload monthly = new MonthlyWorkload();
+            monthly.setMonth(month);
+            monthly.setTotalTrainingDuration(duration); // set initial value
+
+            YearlyWorkload yearly = new YearlyWorkload();
+            yearly.setYear(year);
+            yearly.getMonthlyWorkloads().add(monthly);
+
+            trainer = new TrainerWorkload(
+                    username,
+                    dto.getFirstName(),
+                    dto.getLastName(),
+                    dto.isActive()
             );
-        }
+            trainer.getYearlyWorkloads().add(yearly);
 
-        trainerRepo.save(trainer);
-        log.info("TransactionID: {} - Trainer workload saved for {}", transactionId, dto.getUsername());
+            log.info("TransactionID: {} - New trainer document initialized with year {} and month {}", transactionId, year, month);
+        } else {
+            // Existing trainer case
+            trainer = optionalTrainer.get();
+            trainer.setFirstName(dto.getFirstName());
+            trainer.setLastName(dto.getLastName());
+            trainer.setActive(dto.isActive());
+
+            YearlyWorkload yearly = trainer.getYearlyWorkloads().stream()
+                    .filter(y -> y.getYear() == year)
+                    .findFirst()
+                    .orElseGet(() -> {
+                        YearlyWorkload y = new YearlyWorkload();
+                        y.setYear(year);
+                        trainer.getYearlyWorkloads().add(y);
+                        return y;
+                    });
+
+            MonthlyWorkload monthly = yearly.getMonthlyWorkloads().stream()
+                    .filter(m -> m.getMonth() == month)
+                    .findFirst()
+                    .orElseGet(() -> {
+                        MonthlyWorkload m = new MonthlyWorkload();
+                        m.setMonth(month);
+                        yearly.getMonthlyWorkloads().add(m);
+                        return m;
+                    });
+
+            if ("ADD".equalsIgnoreCase(action)) {
+                log.info("TransactionID: {} - Adding {} minutes for {}/{}", transactionId, duration, year, month);
+                int current = monthly.getTotalTrainingDuration();
+                monthly.setTotalTrainingDuration(current + duration); // d) + e)
+            } else if ("DELETE".equalsIgnoreCase(action)) {
+                log.info("TransactionID: {} - Removing {} minutes for {}/{}", transactionId, duration, year, month);
+                int current = monthly.getTotalTrainingDuration();
+                monthly.setTotalTrainingDuration(Math.max(0, current - duration)); // safe floor at 0
+            }
+
+
+            trainerRepo.save(trainer);
+            log.info("TransactionID: {} - Updated trainer workload saved for {}", transactionId, username);
+        }
     }
+
 
     @Override
     public MonthlySummaryDTO getMonthlySummary(String username, int year, int month) {

@@ -1,6 +1,5 @@
 package com.epam.microservices.TrainingSummary.model;
 
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -8,9 +7,19 @@ import lombok.NoArgsConstructor;
 import java.util.ArrayList;
 import java.util.List;
 
-@Entity
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
+
+
 @Data
 @AllArgsConstructor
+@NoArgsConstructor
+@Document(collection = "trainer_workloads")
+@CompoundIndexes({
+        @CompoundIndex(name = "first_last_name_idx", def = "{'firstName' : 1, 'lastName' : 1}")
+})
 public class TrainerWorkload {
 
     @Id
@@ -20,8 +29,6 @@ public class TrainerWorkload {
     private String lastName;
     private boolean isActive;
 
-    @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "trainer_username")
     private List<YearlyWorkload> yearlyWorkloads = new ArrayList<>();
 
     public TrainerWorkload(String username, String firstName, String lastName, boolean active) {
@@ -29,9 +36,5 @@ public class TrainerWorkload {
         this.firstName = firstName;
         this.lastName = lastName;
         this.isActive = active;
-    }
-
-    public TrainerWorkload() {
-
     }
 }

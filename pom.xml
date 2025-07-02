@@ -62,6 +62,38 @@
 			<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
 			<version>2.5.0</version>
 		</dependency>
+
+		<!-- Cucumber Java support -->
+		<dependency>
+			<groupId>io.cucumber</groupId>
+			<artifactId>cucumber-java</artifactId>
+			<version>7.14.0</version>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- Cucumber JUnit -->
+		<dependency>
+			<groupId>io.cucumber</groupId>
+			<artifactId>cucumber-junit</artifactId>
+			<version>7.14.0</version>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- Cucumber Spring (optional, needed if you want to autowire beans from Spring context) -->
+		<dependency>
+			<groupId>io.cucumber</groupId>
+			<artifactId>cucumber-spring</artifactId>
+			<version>7.14.0</version>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- JUnit 4 (required for cucumber-junit runner) -->
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.13.2</version>
+			<scope>test</scope>
+		</dependency>
 		<!-- Mockito -->
 		<dependency>
 			<groupId>org.mockito</groupId>
@@ -85,17 +117,6 @@
 			<optional>true</optional>
 		</dependency>
 
-<!--		H2 database dependency commented because of moving to MongoDB-->
-<!--		<dependency>-->
-<!--			<groupId>com.h2database</groupId>-->
-<!--			<artifactId>h2</artifactId>-->
-<!--			<scope>runtime</scope>-->
-<!--		</dependency>-->
-<!--		Spring JPA dependency for RDBMS not used for NoSQL-->
-<!--		<dependency>-->
-<!--			<groupId>org.springframework.boot</groupId>-->
-<!--			<artifactId>spring-boot-starter-data-jpa</artifactId>-->
-<!--		</dependency>-->
 
 		<!-- MongoDB dependencies -->
 		<dependency>
